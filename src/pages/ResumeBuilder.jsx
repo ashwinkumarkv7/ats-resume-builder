@@ -11,6 +11,7 @@ import { generateContent } from '../utils/ai';
 import { auth } from '../firebase';
 import { createResume, updateResume, getResumeById } from '../utils/db';
 import { exportToPdf, exportToDocx } from '../utils/export';
+import AtsAnalysisModal from '../components/AtsAnalysisModal';
 
 const SECTION_STEPS = [
     { id: 'personal', label: 'Personal Info' },
@@ -290,6 +291,7 @@ const ResumeBuilder = () => {
     // --- Export Logic ---
     const [isExporting, setIsExporting] = useState(false);
     const [showExportDropdown, setShowExportDropdown] = useState(false);
+    const [showAtsModal, setShowAtsModal] = useState(false);
 
     const handleExport = async (type) => {
         setIsExporting(true);
@@ -308,6 +310,14 @@ const ResumeBuilder = () => {
         } finally {
             setIsExporting(false);
         }
+    };
+
+    // ATS Fix Callback
+    const handleApplyAtsFixes = (updates) => {
+        if (updates.summary) setValue('summary', updates.summary);
+        if (updates.skills) setValue('skills', updates.skills);
+        // Optionally show toast or alert
+        alert("Applied ATS optimizations successfully!");
     };
 
     // Template Options
@@ -433,7 +443,15 @@ const ResumeBuilder = () => {
                             </div>
                         )}
                     </div>
-                    <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium ml-2">ATS Strict Mode Active</span>
+
+                    {/* ATS Check Button */}
+                    <button
+                        onClick={() => setShowAtsModal(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-bold rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105 ml-4"
+                    >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Check Score
+                    </button>
                 </div>
 
                 {/* Progress Bar */}
@@ -515,7 +533,7 @@ const ResumeBuilder = () => {
                         {lastSaved && <span className="text-[10px] text-slate-400 mt-0.5">Saved {lastSaved.toLocaleTimeString()}</span>}
                     </div>
                 </div>
-            </header>
+            </header >
 
             <div className="flex-1 flex overflow-hidden">
                 {/* Left Panel: Form */}
@@ -691,57 +709,67 @@ const ResumeBuilder = () => {
                 </div>
             </div>
             {/* Crop Modal */}
-            {isCropModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col h-[500px]">
-                        <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-                            <h3 className="font-bold text-slate-800">Adjust Photo</h3>
-                            <button onClick={cancelCrop} className="text-slate-400 hover:text-slate-600">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
+            {
+                isCropModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                        <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col h-[500px]">
+                            <div className="p-4 border-b border-slate-100 flex justify-between items-center">
+                                <h3 className="font-bold text-slate-800">Adjust Photo</h3>
+                                <button onClick={cancelCrop} className="text-slate-400 hover:text-slate-600">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
 
-                        <div className="relative flex-1 bg-slate-100">
-                            <Cropper
-                                image={imageSrc}
-                                crop={crop}
-                                zoom={cropZoom}
-                                aspect={1}
-                                onCropChange={setCrop}
-                                onCropComplete={onCropComplete}
-                                onZoomChange={setCropZoom}
-                                cropShape="round"
-                                showGrid={false}
-                            />
-                        </div>
-
-                        <div className="p-6 bg-white border-t border-slate-100 space-y-4">
-                            <div className="flex items-center gap-4">
-                                <span className="text-xs font-medium text-slate-500">Zoom</span>
-                                <input
-                                    type="range"
-                                    value={cropZoom}
-                                    min={1}
-                                    max={3}
-                                    step={0.1}
-                                    aria-labelledby="Zoom"
-                                    onChange={(e) => setCropZoom(e.target.value)}
-                                    className="flex-1 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                            <div className="relative flex-1 bg-slate-100">
+                                <Cropper
+                                    image={imageSrc}
+                                    crop={crop}
+                                    zoom={cropZoom}
+                                    aspect={1}
+                                    onCropChange={setCrop}
+                                    onCropComplete={onCropComplete}
+                                    onZoomChange={setCropZoom}
+                                    cropShape="round"
+                                    showGrid={false}
                                 />
                             </div>
-                            <div className="flex gap-3">
-                                <Button variant="ghost" onClick={cancelCrop} className="flex-1 justify-center">
-                                    Cancel
-                                </Button>
-                                <Button variant="primary" onClick={handleSaveCrop} className="flex-1 justify-center gap-2">
-                                    <Check className="w-4 h-4" /> Save Photo
-                                </Button>
+
+                            <div className="p-6 bg-white border-t border-slate-100 space-y-4">
+                                <div className="flex items-center gap-4">
+                                    <span className="text-xs font-medium text-slate-500">Zoom</span>
+                                    <input
+                                        type="range"
+                                        value={cropZoom}
+                                        min={1}
+                                        max={3}
+                                        step={0.1}
+                                        aria-labelledby="Zoom"
+                                        onChange={(e) => setCropZoom(e.target.value)}
+                                        className="flex-1 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                    />
+                                </div>
+                                <div className="flex gap-3">
+                                    <Button variant="ghost" onClick={cancelCrop} className="flex-1 justify-center">
+                                        Cancel
+                                    </Button>
+                                    <Button variant="primary" onClick={handleSaveCrop} className="flex-1 justify-center gap-2">
+                                        <Check className="w-4 h-4" /> Save Photo
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+
+            {/* ATS Analysis Modal */}
+            <AtsAnalysisModal
+                isOpen={showAtsModal}
+                onClose={() => setShowAtsModal(false)}
+                resumeData={resumeData}
+                onApplyFixes={handleApplyAtsFixes}
+            />
+        </div >
     );
 };
 
