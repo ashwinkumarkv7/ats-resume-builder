@@ -12,8 +12,11 @@ export default async function getCroppedImg(imageSrc, pixelCrop) {
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
 
-    canvas.width = pixelCrop.width
-    canvas.height = pixelCrop.height
+    // Force a standard small size for profile pictures (e.g. 400x400)
+    // This dramatically reduces storage size.
+    const size = 400;
+    canvas.width = size;
+    canvas.height = size;
 
     ctx.drawImage(
         image,
@@ -23,9 +26,10 @@ export default async function getCroppedImg(imageSrc, pixelCrop) {
         pixelCrop.height,
         0,
         0,
-        pixelCrop.width,
-        pixelCrop.height
+        size,
+        size
     )
 
-    return canvas.toDataURL('image/png')
+    // Export as JPEG with reduced quality to save space
+    return canvas.toDataURL('image/jpeg', 0.8)
 }

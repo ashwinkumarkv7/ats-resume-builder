@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { useLocation, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
-import { ChevronRight, ChevronLeft, Save, Eye, Sparkles, Upload, ZoomIn, ZoomOut, Maximize, Wand2, X, Check, Loader2 } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Save, Eye, Sparkles, Upload, ZoomIn, ZoomOut, Maximize, Wand2, X, Check, Loader2, Download, FileText } from 'lucide-react';
 import Button from '../components/Button';
 import ResumePreview from '../components/ResumePreview';
 import Cropper from 'react-easy-crop';
@@ -10,6 +10,7 @@ import getCroppedImg from '../utils/canvasUtils';
 import { generateContent } from '../utils/ai';
 import { auth } from '../firebase';
 import { createResume, updateResume, getResumeById } from '../utils/db';
+import { exportToPdf, exportToDocx } from '../utils/export';
 
 const SECTION_STEPS = [
     { id: 'personal', label: 'Personal Info' },
@@ -204,8 +205,8 @@ const ResumeBuilder = () => {
             // Default to null if no photo exists or if it is explicitly undefined (Firestore throws error on undefined)
             let photo = formData.personal?.photo || null;
 
-            if (photo && photo.length > 800000) {
-                if (!silent) alert("Image too large! Please use a smaller image (under 500KB). Saving text only.");
+            if (photo && photo.length > 950000) {
+                if (!silent) alert("Image is still too large for the database limit. Please re-upload or crop it again.");
                 photo = null;
             }
 
@@ -284,6 +285,29 @@ const ResumeBuilder = () => {
     const cancelCrop = () => {
         setIsCropModalOpen(false);
         setImageSrc(null);
+    };
+
+    // --- Export Logic ---
+    const [isExporting, setIsExporting] = useState(false);
+    const [showExportDropdown, setShowExportDropdown] = useState(false);
+
+    const handleExport = async (type) => {
+        setIsExporting(true);
+        setShowExportDropdown(false);
+        try {
+            const data = watch();
+            const filename = (data.title || 'Resume').replace(/\s+/g, '_');
+
+            if (type === 'pdf') {
+                await exportToPdf(`${filename}.pdf`);
+            } else if (type === 'docx') {
+                await exportToDocx(data, `${filename}.docx`);
+            }
+        } catch (error) {
+            alert(`Export Failed: ${error.message}`);
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     // Template Options
@@ -448,6 +472,41 @@ const ResumeBuilder = () => {
                     <Button variant="ghost" className="md:hidden" onClick={() => setShowPreviewMobile(!showPreviewMobile)}>
                         <Eye className="w-4 h-4 mr-2" /> {showPreviewMobile ? 'Edit' : 'Preview'}
                     </Button>
+
+                    {/* Export Dropdown */}
+                    <div className="relative">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2 border-slate-300 text-slate-700 hover:bg-slate-50"
+                            onClick={() => setShowExportDropdown(!showExportDropdown)}
+                            disabled={isExporting}
+                        >
+                            {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                            Export
+                        </Button>
+
+                        {showExportDropdown && (
+                            <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-slate-200 z-50 p-1 animate-in fade-in zoom-in-95 duration-200">
+                                <button
+                                    onClick={() => handleExport('pdf')}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-md transition-colors"
+                                >
+                                    <FileText className="w-4 h-4 text-red-500" />
+                                    <span>Download PDF</span>
+                                </button>
+                                <button
+                                    onClick={() => handleExport('docx')}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-md transition-colors"
+                                >
+                                    <FileText className="w-4 h-4 text-blue-600" />
+                                    <span>Download Word (DOCX)</span>
+                                </button>
+                            </div>
+                        )}
+                        {/* Close dropdown when clicking outside (handled simply by overlay or user action in React usually, sticking to simple toggle here for brevity) */}
+                    </div>
+
                     <div className="flex flex-col items-end">
                         <Button variant="primary" size="sm" className="gap-2" onClick={() => handleSave(false)} disabled={isSaving}>
                             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}

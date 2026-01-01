@@ -17,7 +17,10 @@ const ResumePreview = ({ data, template = 'classic' }) => {
 
     return (
         <div className={clsx(
-            "w-[210mm] min-h-[297mm] bg-white shadow-2xl p-[20mm] text-black font-sans leading-normal transition-all duration-300",
+            "w-[210mm] min-h-[297mm] bg-white shadow-2xl text-black font-sans leading-normal transition-all duration-300",
+            // Base padding for most templates (except full-bleed ones)
+            !isCreative && "p-[20mm]",
+
             // Classic: Standard 11pt, centered
             isClassic && "text-[11pt]",
             // Modern: Slightly tighter, 10.5pt, left align mostly
@@ -26,12 +29,12 @@ const ResumePreview = ({ data, template = 'classic' }) => {
             isMinimal && "text-[11pt]",
             // Executive: Serif, proper borders, 12pt heading
             isExecutive && "text-[11pt] font-serif",
-            // Tech: Monospace headers maybe, but clean sans-serif body
+            // Tech: Monospace headers
             isTech && "text-[10pt] font-mono",
             // Simple: No borders, just spacing
             isSimple && "text-[11pt]",
-            // Creative: Grid layout usually, but here we handle main container font
-            isCreative && "text-[10pt] grid grid-cols-[30%_70%] p-0 overflow-hidden",
+            // Creative: Grid layout, NO padding (handled by grid/children)
+            isCreative && "text-[10pt] grid grid-cols-[30%_70%] p-0",
             // Photo Centered
             isPhotoCentered && "text-[11pt]"
         )} id="resume-preview">
